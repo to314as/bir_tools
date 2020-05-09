@@ -44,21 +44,28 @@ def create_arg_parser(parser=None):
     parser.add_argument('--logdir', type=str, default='/mnt/mnt/5TB_slot2/Tobias/Thesis/log/wrapper_org',
                         help='Path to an existing checkpoint. Used along with "--resume"')
     parser.add_argument('--seed', default=42, type=int, help='Seed for random number generators')
-    parser.add_argument('--resolution', default=50, type=int, help='Resolution of images')
+    parser.add_argument('--resolution', default=256, type=int, help='Resolution of images')
     parser.add_argument('--device_ids', default=[0,1] , help='GPUS used')
+    parser.add_argument('--acceleration', default=4, help='Acceleration factor used in artifical undersampling')
     return parser
 args=create_arg_parser().parse_args()
     
 def to_tensor(data):
     if np.iscomplexobj(data):
         data = np.stack((data.real, data.imag), axis=-1)
-    return torch.from_numpy(data).float()
+    return torch.from_numpy(data).double()
 
 def rsos(data,ax=1):
         return np.sqrt(np.sum(np.square(np.abs(data)),axis=ax))
 
 def to_complex(data):
     return data.sum(dim=-1)
+
+def make_ift_one(data):
+    return nf.ifft(data,axis=0)
+
+def make_ft_one(data):
+    return nf.fft(data,axis=0)
 
 def make_ift(data):
     try:
@@ -150,7 +157,7 @@ def complex_center_crop_2d(data, shape):
 
 #statistics for normalization
 #masking k-space (multiple undersamplings to test)
-def random_cartesian_mask(shape=[1,args.resolution,args.resolution],center_fractions=[0.08],accelerations=[4],seed=42):
+def random_cartesian_mask(shape=[1,args.resolution,args.resolution],center_fractions=[0.04],accelerations=[4],seed=42):
         rng = np.random.RandomState()
         if len(shape) < 3:
             raise ValueError('Shape should have 3 or more dimensions')
@@ -174,7 +181,7 @@ def random_cartesian_mask(shape=[1,args.resolution,args.resolution],center_fract
         #print(mask.shape)
         return mask
 
-def equi_cartesian_mask(shape=[1,args.resolution,args.resolution],center_fractions=[0.08],accelerations=[4],seed=42):
+def equi_cartesian_mask(shape=[1,args.resolution,args.resolution],center_fractions=[0.04],accelerations=[8],seed=42):
         rng = np.random.RandomState()
         if len(shape) < 3:
             raise ValueError('Shape should have 3 or more dimensions')
@@ -204,11 +211,23 @@ def equi_cartesian_mask(shape=[1,args.resolution,args.resolution],center_fractio
         mask = torch.from_numpy(mask.reshape(*mask_shape).astype(np.float32))
         return mask
 
-def apply_mask(data):
+def plain_cartesian_mask(shape=[1,args.resolution,args.resolution],acceleration=args.acceleration):
+        mask=np.array([i%acceleration==0 for i in range(shape[-2])])
+        mask_shape = [1 for _ in shape]
+        mask_shape[-2] = shape[-2]
+        mask = torch.from_numpy(mask.reshape(*mask_shape).astype(np.float32))
+        return mask
+    
+def apply_mask(data,mode="plain"):
     if len(data.shape)>3:
         shape = np.array(data.shape)
     else:
         shape = np.array(data.shape)
-    #c_mask = random_cartesian_mask(shape)
-    c_mask = equi_cartesian_mask(shape)                  
+    if mode=="random":
+        c_mask = random_cartesian_mask(shape)
+    if mode=="mid":
+        c_mask = equi_cartesian_mask(shape)
+    else:
+        c_mask=plain_cartesian_mask(shape)
+    #print(c_mask.shape)
     return data * c_mask, c_mask
