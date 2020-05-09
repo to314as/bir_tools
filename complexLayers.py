@@ -92,7 +92,9 @@ class ComplexConv2d(Module):
         self.conv_r = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.conv_i = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         IF_R=torch.Tensor([[[[np.cos(2*(j)*(i)*np.pi/out_channels)/out_channels for j in range(out_channels)] for i in range(kernel_size[0])]] for i in range(in_channels) for i in range(out_channels)]).double()
+        IF_R=nf.ifftshift(IF_R)
         IF_IMAG=torch.Tensor([[[[np.sin(2*(j)*(i)*np.pi/out_channels)/out_channels for j in range(out_channels)] for i in range(kernel_size[0])]] for i in range(in_channels) for i in range(out_channels)]).double()
+        IF_IMAG=nf.ifftshift(IF_IMAG)
         #IFB=torch.Tensor([0 for i in range(out_channels)]).double()
         with torch.no_grad():
             self.conv_r.weight = torch.nn.Parameter(IF_R)

@@ -28,11 +28,11 @@ class ComplexFourier(nn.Module):
             input.squeeze(1)
         input_r=input[...,0]
         input_i=input[...,1]
-        print("in",input_r.shape)
+        #print("in",input_r.shape)
         output_r,output_i=self.layer1(input_r,input_i)
         output_r,output_i=output_r.squeeze(-1).unsqueeze(1),output_i.squeeze(-1).unsqueeze(1)
-        print("out",output_r.shape)
+        #print("out",output_r.shape)
         output_r,output_i=self.layer2(output_r,output_i)
         output_r,output_i=output_r.squeeze(-1),output_i.squeeze(-1)
-        print("out2",output_r.shape)
+        #print("out2",output_r.shape)
         return (output_r**2+output_i**2)**(1/2)
