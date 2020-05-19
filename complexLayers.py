@@ -5,6 +5,7 @@ from torch.nn import ConvTranspose2d, ConvTranspose3d
 from complexFunctions import complex_relu, complex_max_pool2d
 from complexFunctions import complex_dropout, complex_dropout2d
 import numpy as np
+import numpy.fft as nf
 
 class ComplexSequential(Sequential):
     def forward(self, input_r, input_t):
@@ -87,20 +88,21 @@ class ComplexConvTranspose3d(Module):
                self.conv_tran_r(input_i)+self.conv_tran_i(input_r)
 
 class ComplexConv2d(Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding = 0,dilation=1, groups=1, bias=True):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding = 0,dilation=1, groups=1, bias=True, setW=True):
         super(ComplexConv2d,self).__init__()
         self.conv_r = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.conv_i = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
-        IF_R=torch.Tensor([[[[np.cos(2*(j)*(i)*np.pi/out_channels)/out_channels for j in range(out_channels)] for i in range(kernel_size[0])]] for i in range(in_channels) for i in range(out_channels)]).double()
-        IF_R=nf.ifftshift(IF_R)
-        IF_IMAG=torch.Tensor([[[[np.sin(2*(j)*(i)*np.pi/out_channels)/out_channels for j in range(out_channels)] for i in range(kernel_size[0])]] for i in range(in_channels) for i in range(out_channels)]).double()
-        IF_IMAG=nf.ifftshift(IF_IMAG)
-        #IFB=torch.Tensor([0 for i in range(out_channels)]).double()
-        with torch.no_grad():
-            self.conv_r.weight = torch.nn.Parameter(IF_R)
-            self.conv_i.weight = torch.nn.Parameter(IF_IMAG)
-            #self.fc_r.bias = torch.nn.Parameter(IFB)
-            #self.fc_i.bias = torch.nn.Parameter(IFB)
+        if setW:
+            IF_R=[[[[np.cos(2*(j)*(i)*np.pi/out_channels)/out_channels for j in range(out_channels)] for i in range(kernel_size[0])]] for l in range(in_channels) for k in range(out_channels)]
+            IF_R=torch.Tensor(nf.ifftshift(IF_R)).double()
+            IF_IMAG=[[[[np.sin(2*(j)*(i)*np.pi/out_channels)/out_channels for j in range(out_channels)] for i in range(kernel_size[0])]] for l in range(in_channels) for k in range(out_channels)]
+            IF_IMAG=torch.Tensor(nf.ifftshift(IF_IMAG)).double()   
+            #IFB=torch.Tensor([0 for i in range(out_channels)]).double()
+            with torch.no_grad():
+                self.conv_r.weight = torch.nn.Parameter(IF_R)
+                self.conv_i.weight = torch.nn.Parameter(IF_IMAG)
+                #self.fc_r.bias = torch.nn.Parameter(IFB)
+                #self.fc_i.bias = torch.nn.Parameter(IFB)
         
     def forward(self,input_r, input_i):
         return self.conv_r(input_r)-self.conv_i(input_i), \

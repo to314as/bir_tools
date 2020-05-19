@@ -9,6 +9,9 @@ import numpy.fft as nf
 import random
 import torchvision
 from torchvision import transforms, utils
+import torch
+from torch.nn import functional as F
+from pytorch_msssim import ssim
 
 sys.argv=['']
 def create_arg_parser(parser=None):
@@ -218,16 +221,22 @@ def plain_cartesian_mask(shape=[1,args.resolution,args.resolution],acceleration=
         mask = torch.from_numpy(mask.reshape(*mask_shape).astype(np.float32))
         return mask
     
-def apply_mask(data,mode="plain"):
+def apply_mask(data,mode="mid",r=4):
     if len(data.shape)>3:
         shape = np.array(data.shape)
     else:
         shape = np.array(data.shape)
     if mode=="random":
-        c_mask = random_cartesian_mask(shape)
+        c_mask = random_cartesian_mask(shape,accelerations=[r])
     if mode=="mid":
-        c_mask = equi_cartesian_mask(shape)
+        c_mask = equi_cartesian_mask(shape,accelerations=[r])
     else:
-        c_mask=plain_cartesian_mask(shape)
+        c_mask=plain_cartesian_mask(shape,acceleration=r)
     #print(c_mask.shape)
     return data * c_mask, c_mask
+
+def losses(out,tar):
+    mse=F.mse_loss(out, tar)
+    l1=F.l1_loss(out, tar)
+    ssim=ssim( out, tar, data_range=1, size_average=False)
+    return mse,l1,ssim
