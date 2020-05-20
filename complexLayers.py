@@ -30,8 +30,7 @@ class ComplexDropout2d(Module):
         return complex_dropout2d(input_r,input_i,self.p,self.inplace)
 
 class ComplexMaxPool2d(Module):
-    def __init__(self,kernel_size, stride= None, padding = 0,
-                 dilation = 1, return_indices = False, ceil_mode = False):
+    def __init__(self,kernel_size=2, stride= None, padding = 0, dilation = 1, return_indices = False, ceil_mode = False):
         super(ComplexMaxPool2d,self).__init__()
         self.kernel_size = kernel_size
         self.stride = stride
@@ -40,31 +39,30 @@ class ComplexMaxPool2d(Module):
         self.ceil_mode = ceil_mode
         self.return_indices = return_indices
     def forward(self,input_r,input_i):
-        return complex_max_pool2d(input_r,input_i,kernel_size = self.kernel_size,
-                                stride = self.stride, padding = self.padding,
-                                dilation = self.dilation, ceil_mode = self.ceil_mode,
-                                return_indices = self.return_indices)
-
+        return complex_max_pool2d(input_r, input_i, kernel_size = self.kernel_size, stride = self.stride, padding = self.padding,dilation = self.dilation, ceil_mode = self.ceil_mode, return_indices = self.return_indices)
+    
+    
 class ComplexReLU(Module):
     def __init__(self):
-        super(ComplexReLu,self).__init__()
+        super().__init__()
         
     def forward(self,input_r,input_i):
         return complex_relu(input_r,input_i)
-
+    
 class ComplexConvTranspose2d(Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0,output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros'):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0,output_padding=0, groups=1, bias=True, dilation=1, padding_mode='zeros', setW=False):
         super(ComplexConvTranspose2d,self).__init__()
         self.conv_tran_r = ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding,output_padding, groups, bias, dilation, padding_mode)
         self.conv_tran_i = ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding,output_padding, groups, bias, dilation, padding_mode)
-        IF_R=torch.Tensor([[[[np.cos(2*(j)*(i)*np.pi/kernel_size[1])/kernel_size[1] for j in range(kernel_size[1])] for i in range(kernel_size[0])]] for i in range(in_channels) for i in range(out_channels)]).double()
-        IF_IMAG=torch.Tensor([[[[np.sin(2*(j)*(i)*np.pi/kernel_size[1])/kernel_size[1] for j in range(kernel_size[1])] for i in range(kernel_size[0])]] for i in range(out_channels) for i in range(in_channels)]).double()
-        #IFB=torch.Tensor([0 for i in range(out_channels)]).double()
-        with torch.no_grad():
-            self.conv_tran_r.weight = torch.nn.Parameter(IF_R)
-            self.conv_tran_i.weight = torch.nn.Parameter(IF_IMAG)
-            #self.fc_r.bias = torch.nn.Parameter(IFB)
-            #self.fc_i.bias = torch.nn.Parameter(IFB)
+        if setW:
+            IF_R=torch.Tensor([[[[np.cos(2*(j)*(i)*np.pi/kernel_size[1])/kernel_size[1] for j in range(kernel_size[1])] for i in range(kernel_size[0])]] for i in range(in_channels) for i in range(out_channels)]).double()
+            IF_IMAG=torch.Tensor([[[[np.sin(2*(j)*(i)*np.pi/kernel_size[1])/kernel_size[1] for j in range(kernel_size[1])] for i in range(kernel_size[0])]] for i in range(out_channels) for i in range(in_channels)]).double()
+            #IFB=torch.Tensor([0 for i in range(out_channels)]).double()
+            with torch.no_grad():
+                self.conv_tran_r.weight = torch.nn.Parameter(IF_R)
+                self.conv_tran_i.weight = torch.nn.Parameter(IF_IMAG)
+                #self.fc_r.bias = torch.nn.Parameter(IFB)
+                #self.fc_i.bias = torch.nn.Parameter(IFB)
     def forward(self,input_r,input_i):
         return self.conv_tran_r(input_r)-self.conv_tran_i(input_i), \
                self.conv_tran_r(input_i)+self.conv_tran_i(input_r)
@@ -88,7 +86,7 @@ class ComplexConvTranspose3d(Module):
                self.conv_tran_r(input_i)+self.conv_tran_i(input_r)
 
 class ComplexConv2d(Module):
-    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding = 0,dilation=1, groups=1, bias=True, setW=True):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding = 0,dilation=1, groups=1, bias=True, setW=False):
         super(ComplexConv2d,self).__init__()
         self.conv_r = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.conv_i = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)

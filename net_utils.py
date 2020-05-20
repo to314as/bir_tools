@@ -47,7 +47,7 @@ def create_arg_parser(parser=None):
     parser.add_argument('--logdir', type=str, default='/mnt/mnt/5TB_slot2/Tobias/Thesis/log/wrapper_org',
                         help='Path to an existing checkpoint. Used along with "--resume"')
     parser.add_argument('--seed', default=42, type=int, help='Seed for random number generators')
-    parser.add_argument('--resolution', default=256, type=int, help='Resolution of images')
+    parser.add_argument('--resolution', default=128, type=int, help='Resolution of images')
     parser.add_argument('--device_ids', default=[0,1] , help='GPUS used')
     parser.add_argument('--acceleration', default=4, help='Acceleration factor used in artifical undersampling')
     return parser
