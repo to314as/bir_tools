@@ -175,10 +175,48 @@ class ComplexEndToEnd(nn.Module):
             output_i = torch.cat([output_i, downsample_layer[1]], dim=1)
             output_r,output_i = conv(output_r,output_i)
             
-        output_r,output_i=self.layer1(input_r,input_i)
+        output_r,output_i=self.f_layer1(output_r,output_i)
         output_r,output_i=output_r.squeeze(-1).unsqueeze(1),output_i.squeeze(-1).unsqueeze(1)
         #print("out",output_r.shape)
-        output_r,output_i=self.layer2(output_r,output_i)
+        output_r,output_i=self.f_layer2(output_r,output_i)
         output_r,output_i=output_r.squeeze(-1).unsqueeze(1),output_i.squeeze(-1).unsqueeze(1)
         
+        return output_r,output_i
+    
+    
+    
+class td_fourier_net(nn.Module):
+    """
+    Two dimensional convolutional fourier transform approximation.
+    """
+
+    def __init__(self, in_chans=1,out_chans=1,drop_prob=0.05,resolution=128):
+        """
+        Args:
+            in_chans (int): Number of channels in the input.
+            out_chans (int): Number of channels in the output.
+        """
+        super().__init__()
+
+        self.in_chans = int(in_chans)
+        self.out_chans = int(out_chans)
+        self.drop_prob = drop_prob
+        self.resolution= resolution
+        self.c_layer1=ComplexConv2d(in_channels=1, out_channels=resolution, kernel_size=(1,resolution),padding=(0,0), stride=1, bias=False)
+        self.c_layer2=ComplexConv2d(in_channels=1, out_channels=resolution, kernel_size=(1,resolution),padding=(0,0), stride=1, bias=False)
+
+    def forward(self, input):
+        """
+        Args:
+            input (torch.Tensor): Input tensor of shape [batch_size, self.in_chans, height, width]
+        Returns:
+            (torch.Tensor): Output tensor of shape [batch_size, self.out_chans, height, width]
+        """
+        output_r = input[...,0]
+        output_i = input[...,1]
+        output_r,output_i=self.c_layer1(output_r,output_i)
+        output_r,output_i=output_r.squeeze(-1).unsqueeze(1),output_i.squeeze(-1).unsqueeze(1)
+        #print("out",output_r.shape)
+        output_r,output_i=self.c_layer2(output_r,output_i)
+        output_r,output_i=output_r.squeeze(-1).unsqueeze(1),output_i.squeeze(-1).unsqueeze(1)
         return output_r,output_i
