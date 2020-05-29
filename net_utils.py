@@ -12,6 +12,9 @@ from torchvision import transforms, utils
 import torch
 from torch.nn import functional as F
 from pytorch_msssim import ssim
+import vd_spiral
+import sigpy as sp
+import sigpy.plot as pl
 
 sys.argv=['']
 def create_arg_parser(parser=None):
@@ -222,10 +225,7 @@ def plain_cartesian_mask(shape=[1,args.resolution,args.resolution],acceleration=
         return mask
     
 def apply_mask(data,mode="mid",r=4):
-    if len(data.shape)>3:
-        shape = np.array(data.shape)
-    else:
-        shape = np.array(data.shape)
+    shape = np.array(data.shape)
     if mode=="random":
         c_mask = random_cartesian_mask(shape,accelerations=[r])
     if mode=="mid":
@@ -240,3 +240,67 @@ def losses(out,tar):
     l1=F.l1_loss(out, tar)
     ssim=ssim( out, tar, data_range=1, size_average=False)
     return mse,l1,ssim
+
+def check_density(traj,d=[],r0=1):
+    d_p=[]
+    temp=1
+    r=r0
+    rs=[]
+    for i in range(len(traj)):
+        #print((traj[i, 0]**2 + traj[i, 1]**2)**0.5)
+        #print("r",r)
+        if (traj[i, 0]**2 + traj[i, 1]**2)**0.5>r:
+            #print(r)
+            d.append(temp)
+            for i in range(temp-1):
+                d_p.append(temp)
+            rs.append(r)
+            temp=1
+            r=np.sqrt(r0+r**2)
+            while (traj[i, 0]**2 + traj[i, 1]**2)**0.5>r:
+                d.append(temp)
+                r=np.sqrt(r0+r**2)
+                rs.append(r)
+            temp=2
+        else:
+            temp+=1
+    d.append(temp)
+    for i in range(temp-1):
+        d_p.append(temp)
+    #print(d)
+    return np.array(d),np.array(rs),np.array(d_p)
+
+def get_dcf(points,dcf,rs):
+    for i in range(len(points)):
+        for j in range(len(points[i])):
+            print(j)
+            idx=0
+            while (i-args.resolution)**2 + (j-args.resolution)**2>rs[idx]:
+                if idx==len(rs)-1:
+                    break
+                idx+=1
+            points[i,j]=points[i,j]*1/dcf[idx]
+    return points
+
+def apply_dcf(ksp,dp):
+    return ksp/dp
+
+def spiral_undersampling(data,r=8):
+    full=data.shape[-2]*data.shape[-1]
+    us_factor=r
+    N=full//us_factor
+    nRounds=100;
+    PowCoeff=2; 
+    m_size=160;
+    p_base=0;
+    traj=vd_spiral.makeSpiral(N,nRounds,PowCoeff,p_base,m_size);
+    traj=np.swapaxes(traj,0,1)
+    img=abs(make_ift(data))
+    ksp = sp.nufft(img,traj)
+    dcf,rs,d_p=check_density(traj,r0=1)
+    img_grid = sp.nufft_adjoint(apply_dcf(ksp,d_p), traj)
+    ksp = sp.nufft(img_grid,traj)
+    k=make_ift(img_grid)
+    #pl.ImagePlot(img_grid,z=0,title='Multi-channel Gridding')
+    #pl.ImagePlot(rsos(img_grid,0),title='Multi-channel Gridding')
+    return k

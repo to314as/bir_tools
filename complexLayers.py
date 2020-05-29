@@ -88,6 +88,7 @@ class ComplexConvTranspose3d(Module):
 class ComplexConv2d(Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding = 0,dilation=1, groups=1, bias=True, setW=False):
         super(ComplexConv2d,self).__init__()
+        self.in_channels=in_channels
         self.conv_r = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         self.conv_i = Conv2d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
         if setW:
