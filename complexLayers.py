@@ -1,6 +1,6 @@
 import torch
 from torch.nn import Module, Parameter, init, Sequential
-from torch.nn import Conv2d, Linear, BatchNorm1d, BatchNorm2d
+from torch.nn import Conv2d, Linear, BatchNorm1d, BatchNorm2d, Conv1d
 from torch.nn import ConvTranspose2d, ConvTranspose3d
 from complexFunctions import complex_relu, complex_max_pool2d
 from complexFunctions import complex_dropout, complex_dropout2d
@@ -104,6 +104,19 @@ class ComplexConv2d(Module):
                 #self.fc_i.bias = torch.nn.Parameter(IFB)
         
     def forward(self,input_r, input_i):
+        return self.conv_r(input_r)-self.conv_i(input_i), \
+               self.conv_r(input_i)+self.conv_i(input_r)
+
+class ComplexConv1d(Module):
+    def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=0, dilation=1, groups=1, bias=False):
+        super(ComplexConv1d, self).__init__()
+        self.in_channels=in_channels
+        self.conv_r = Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        self.conv_i = Conv1d(in_channels, out_channels, kernel_size, stride, padding, dilation, groups, bias)
+        
+    def forward(self,input_r, input_i):#
+        input_r=input_r.unsqueeze(1)
+        input_i=input_i.unsqueeze(1)
         return self.conv_r(input_r)-self.conv_i(input_i), \
                self.conv_r(input_i)+self.conv_i(input_r)
 

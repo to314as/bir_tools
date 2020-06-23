@@ -65,7 +65,8 @@ def rsos(data,ax=1):
         return np.sqrt(np.sum(np.square(np.abs(data)),axis=ax))
 
 def to_complex(data):
-    return data.sum(dim=-1)
+    data = data.numpy()
+    return data[..., 0] + 1j * data[..., 1]
 
 def make_ift_one(data):
     return nf.ifft(data,axis=0)
@@ -228,7 +229,7 @@ def apply_mask(data,mode="mid",r=4):
     shape = np.array(data.shape)
     if mode=="random":
         c_mask = random_cartesian_mask(shape,accelerations=[r])
-    if mode=="mid":
+    elif mode=="mid":
         c_mask = equi_cartesian_mask(shape,accelerations=[r])
     else:
         c_mask=plain_cartesian_mask(shape,acceleration=r)

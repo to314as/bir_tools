@@ -4,6 +4,8 @@ from torch.nn import Conv2d
 from torch.nn import functional as F
 from complexLayers import ComplexSequential,ComplexConv2d,ComplexBatchNorm2d,ComplexConvTranspose2d,ComplexMaxPool2d,ComplexReLU,ComplexDropout2d
 from  complexFunctions import complex_relu, complex_max_pool2d
+import net_utils as nu
+
 
 
 class ComplexConvBlock(nn.Module):
@@ -113,6 +115,9 @@ class ComplexEndToEnd(nn.Module):
         self.num_pool_layers = num_pool_layers
         self.drop_prob = drop_prob
         self.resolution= resolution
+        self.combine_layer=ComplexSequential(
+            ComplexConv2d(in_channels=out_chans, out_channels=1, kernel_size=(5,5),padding=(2,2), stride=1, bias=False))#,
+            #ComplexReLU())
         self.f_layer1=ComplexConv2d(in_channels=1, out_channels=resolution, kernel_size=(1,resolution),padding=(0,0), stride=1, bias=False)
         self.f_layer2=ComplexConv2d(in_channels=1, out_channels=resolution, kernel_size=(1,resolution),padding=(0,0), stride=1, bias=False)
 
@@ -175,7 +180,13 @@ class ComplexEndToEnd(nn.Module):
             output_r = torch.cat([output_r, downsample_layer[0]], dim=1)
             output_i = torch.cat([output_i, downsample_layer[1]], dim=1)
             output_r,output_i = conv(output_r,output_i)
-            
+        
+        
+        if output_r.shape[1]>1:
+            #print("R",F.mse_loss(output_r[input[...,0]!=0], input[...,0][input[...,0]!=0]).item())
+            #print("I",F.mse_loss(output_i[input[...,1]!=0], input[...,1][input[...,1]!=0]).item())
+            output_r[input[...,0]!=0],output_i[input[...,1]!=0]=input[...,0][input[...,0]!=0],input[...,1][input[...,1]!=0]
+            output_r,output_i=self.combine_layer(output_r,output_i)
         output_r,output_i=self.f_layer1(output_r,output_i)
         output_r,output_i=output_r.squeeze(-1).unsqueeze(1),output_i.squeeze(-1).unsqueeze(1)
         #print("out",output_r.shape)
